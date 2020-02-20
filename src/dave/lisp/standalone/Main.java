@@ -2,8 +2,6 @@ package dave.lisp.standalone;
 
 import java.util.Scanner;
 
-import java.io.IOException;
-
 import dave.lisp.Result;
 import dave.lisp.LispObject;
 import dave.lisp.LispRuntime;
