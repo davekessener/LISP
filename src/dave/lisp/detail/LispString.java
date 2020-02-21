@@ -1,4 +1,4 @@
-package dave.lisp;
+package dave.lisp.detail;
 
 import dave.lisp.utils.CharBuf;
 

@@ -1,6 +1,10 @@
-package dave.lisp;
+package dave.lisp.detail;
 
 import java.util.List;
+
+import dave.lisp.common.Environment;
+import dave.lisp.common.Result;
+
 import java.util.Arrays;
 
 public class MultiplexEnvironment extends BaseEnvironment

@@ -1,4 +1,6 @@
-package dave.lisp;
+package dave.lisp.common;
+
+import dave.lisp.detail.LispObject;
 
 public class Result
 {

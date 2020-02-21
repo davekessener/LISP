@@ -1,5 +1,6 @@
-package dave.lisp;
+package dave.lisp.detail;
 
+import dave.lisp.common.Environment;
 import dave.lisp.error.LispError;
 
 public abstract class BaseEnvironment implements Environment

@@ -1,6 +1,9 @@
-package dave.lisp;
+package dave.lisp.detail;
 
 import java.util.Map;
+
+import dave.lisp.common.Result;
+
 import java.util.HashMap;
 
 public class MapEnvironment extends BaseEnvironment

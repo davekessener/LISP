@@ -1,4 +1,7 @@
-package dave.lisp;
+package dave.lisp.detail;
+
+import dave.lisp.common.Environment;
+import dave.lisp.common.Result;
 
 public abstract class LispBuiltin extends LispIdentityObject implements LispCallable
 {

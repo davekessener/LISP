@@ -1,11 +1,29 @@
-package dave.lisp;
+package dave.lisp.detail;
 
 import dave.lisp.utils.CharBuf;
-
+import dave.lisp.common.Environment;
+import dave.lisp.common.Result;
 import dave.lisp.error.ParseError;
 
-public final class LispRuntime
+public class LispRuntime
 {
+	private Environment mState;
+	
+	public LispRuntime( ) { this(DEFAULT_ENV); }
+	public LispRuntime(Environment e)
+	{
+		mState = e;
+	}
+	
+	public LispObject eval(LispObject x)
+	{
+		Result r = eval(x, mState);
+		
+		mState = r.environment;
+		
+		return r.value;
+	}
+	
 	public static Result eval(LispObject x, Environment e)
 	{
 		if(x == null)
@@ -63,7 +81,5 @@ public final class LispRuntime
 
 		DEFAULT_ENV = e;
 	}
-
-	private LispRuntime() { }
 }
 

@@ -1,8 +1,10 @@
-package dave.lisp;
+package dave.lisp.detail;
 
 import java.util.List;
 import java.util.ArrayList;
 
+import dave.lisp.common.Environment;
+import dave.lisp.common.Result;
 import dave.lisp.error.LispError;
 
 public final class Builtins

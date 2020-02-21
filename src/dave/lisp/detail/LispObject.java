@@ -1,7 +1,8 @@
-package dave.lisp;
+package dave.lisp.detail;
 
 import dave.lisp.utils.CharBuf;
-
+import dave.lisp.common.Environment;
+import dave.lisp.common.Result;
 import dave.lisp.error.ParseError;
 
 public abstract class LispObject
