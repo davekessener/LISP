@@ -1,6 +1,6 @@
 package dave.lisp.utils;
 
-import dave.lisp.error.ParseError;
+import dave.lisp.error.EOIError;
 
 public class CharBuf
 {
@@ -19,7 +19,7 @@ public class CharBuf
 	public char top()
 	{
 		if(empty())
-			throw new ParseError("Unexpected EOI!");
+			throw new EOIError();
 
 		return mValue.charAt(mIdx);
 	}
@@ -27,7 +27,7 @@ public class CharBuf
 	public void pop()
 	{
 		if(empty())
-			throw new ParseError("Unexpected EOI!");
+			throw new EOIError();
 
 		++mIdx;
 	}

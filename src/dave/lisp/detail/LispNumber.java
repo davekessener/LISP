@@ -1,5 +1,6 @@
 package dave.lisp.detail;
 
+import dave.lisp.error.LispError;
 import dave.lisp.error.ParseError;
 
 import dave.lisp.utils.CharBuf;
@@ -14,11 +15,34 @@ public class LispNumber extends LispIdentityObject
 	}
 
 	public double value() { return mValue; }
+	
+	public int integer()
+	{
+		int r = (int) mValue;
+		
+		if(mValue != r)
+			throw new LispError("Not an integer! [%s]", this);
+		
+		return r;
+	}
 
 	@Override
 	public String serialize()
 	{
-		return String.format("%.3f", mValue);
+		int v = (int) mValue;
+		
+		return (v == mValue ? String.format("%d", v) : String.format("%.3f", mValue));
+	}
+	
+	@Override
+	public boolean equals(Object o)
+	{
+		if(o instanceof LispNumber)
+		{
+			return mValue == ((LispNumber) o).mValue;
+		}
+		
+		return false;
 	}
 
 	public static LispNumber deserialize(CharBuf s)

@@ -14,11 +14,24 @@ public class LispString extends LispIdentityObject
 
 		mValue = v;
 	}
+	
+	public String value() { return mValue; }
 
 	@Override
 	public String serialize()
 	{
 		return String.format("\"%s\"", mValue);
+	}
+	
+	@Override
+	public boolean equals(Object o)
+	{
+		if(o instanceof LispString)
+		{
+			return mValue.equals(((LispString) o).mValue);
+		}
+		
+		return false;
 	}
 
 	public static LispString deserialize(CharBuf s)
@@ -35,9 +48,34 @@ public class LispString extends LispIdentityObject
 			if(s.top() == '\\')
 			{
 				s.pop();
+				
+				switch(s.top())
+				{
+					case 'n':
+						sb.append('\n');
+						break;
+						
+					case 't':
+						sb.append('\t');
+						break;
+						
+					case '"':
+						sb.append('"');
+						break;
+						
+					case '0':
+						sb.append('\0');
+						break;
+						
+					default:
+						throw new ParseError("Invalid escape sequence: \\%c", s.top());
+				}
 			}
-
-			sb.append(s.top());
+			else
+			{
+				sb.append(s.top());
+			}
+			
 			s.pop();
 		}
 

@@ -38,7 +38,7 @@ public class LispLambda extends LispIdentityObject implements LispCallable
 	@Override
 	public String serialize()
 	{
-		return type() + "[" + mArgNames.serialize() + ", " + mBody.serialize() + ", " + mClosure + "]";
+		return type() + "[" + LispObject.serialize(mArgNames) + ", " + LispObject.serialize(mBody) + "]";
 	}
 
 	public String type()
@@ -52,14 +52,6 @@ public class LispLambda extends LispIdentityObject implements LispCallable
 		{
 			return new MapEnvironment();
 		}
-		else if(a == null || p == null)
-		{
-			throw new LispError("Mismatching arg lengths: %s vs %s!", a, p);
-		}
-		else if(!(p instanceof LispCell))
-		{
-			throw new LispError("LAMBDA args not a list: %s", p);
-		}
 		else if(!(a instanceof LispCell))
 		{
 			MapEnvironment e = new MapEnvironment();
@@ -67,6 +59,14 @@ public class LispLambda extends LispIdentityObject implements LispCallable
 			e.put(a, p);
 
 			return e;
+		}
+		else if(a == null || p == null)
+		{
+			throw new LispError("Mismatching arg lengths: %s vs %s! [%s]", a, p, LispObject.serialize(body()));
+		}
+		else if(!(p instanceof LispCell))
+		{
+			throw new LispError("LAMBDA args not a list: %s", p);
 		}
 		else
 		{
@@ -126,16 +126,16 @@ public class LispLambda extends LispIdentityObject implements LispCallable
 
 	private void check()
 	{
-		if(mArgNames == null)
-			throw new LispError("LAMBDA arg-names cannot be NIL!");
-
 		if(mBody == null)
 			throw new LispError("LAMBDA body cannot be NIL!");
 
 		if(mClosure == null)
 			throw new LispError("LAMBDA closure cannot be NIL!");
 
-		checkArgs(1, mArgNames, new ArrayList<>());
+		if(mArgNames != null)
+		{
+			checkArgs(1, mArgNames, new ArrayList<>());
+		}
 	}
 }
 

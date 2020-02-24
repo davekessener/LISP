@@ -1,19 +1,38 @@
 package dave.lisp.detail;
 
 import dave.lisp.utils.CharBuf;
+import dave.lisp.utils.StreamIO;
+
+import java.util.ArrayList;
+import java.util.List;
+
 import dave.lisp.common.Environment;
+import dave.lisp.common.IO;
+import dave.lisp.common.Library;
 import dave.lisp.common.Result;
 import dave.lisp.error.ParseError;
 
 public class LispRuntime
 {
 	private Environment mState;
+	private boolean mRunning;
 	
-	public LispRuntime( ) { this(DEFAULT_ENV); }
-	public LispRuntime(Environment e)
+	public LispRuntime()
 	{
-		mState = e;
+		MapEnvironment e = new MapEnvironment();
+
+		List<IO> fds = new ArrayList<>();
+		
+		fds.add(new StreamIO(System.in, System.out));
+
+		e.put(new LispSymbol(Library.Internals.FILE_HANDLES), new LispProxy<>(fds));
+		e.put(new LispSymbol("quit"), new QuitBuiltin());
+		
+		mState = new MultiplexEnvironment(e, DEFAULT_ENV);
+		mRunning = true;
 	}
+	
+	public boolean running() { return mRunning; }
 	
 	public LispObject eval(LispObject x)
 	{
@@ -42,12 +61,16 @@ public class LispRuntime
 			return null;
 
 		if(!(x instanceof LispCell))
-			throw new IllegalArgumentException(x.getClass().getName());
-
-		LispCell cell = (LispCell) x;
-		Result r = eval(cell.car(), e);
-
-		return new LispCell(r.value, eval_all(cell.cdr(), e));
+		{
+			return eval(x, e).value;
+		}
+		else
+		{
+			LispCell cell = (LispCell) x;
+			Result r = eval(cell.car(), e);
+	
+			return new LispCell(r.value, eval_all(cell.cdr(), e));
+		}
 	}
 
 	public static LispObject parse(String s)
@@ -60,24 +83,52 @@ public class LispRuntime
 
 		return o;
 	}
+	
+	private class QuitBuiltin extends LispBuiltin
+	{
+		private QuitBuiltin() { super("QUIT", true); }
+		
+		@Override
+		protected Result apply(LispObject a, Environment e)
+		{
+			LispRuntime.this.mRunning = false;
+			
+			return new Result(LispBool.TRUE, e);
+		}
+	}
 
-	public static final Environment DEFAULT_ENV;
+	private static final Environment DEFAULT_ENV;
 
 	static
 	{
 		MapEnvironment e = new MapEnvironment();
 
-		e.put(new LispSymbol("DEFINE"), Builtins.DEFINE);
-		e.put(new LispSymbol("BEGIN"), Builtins.BEGIN);
-		e.put(new LispSymbol("LAMBDA"), Builtins.LAMBDA);
-		e.put(new LispSymbol("MACRO"), Builtins.MACRO);
-		e.put(new LispSymbol("IF"), Builtins.IF);
-		e.put(new LispSymbol("NEGATIVE?"), Builtins.IS_NEGATIVE);
-		e.put(new LispSymbol("LIST?"), Builtins.IS_LIST);
-		e.put(new LispSymbol("+"), Builtins.ADD);
-		e.put(new LispSymbol("-"), Builtins.SUB);
-		e.put(new LispSymbol("*"), Builtins.MUL);
-		e.put(new LispSymbol("/"), Builtins.DIV);
+		e.put("NIL", null);
+		e.put("*STDIO*", new LispNumber(0));
+		
+		e.put("QUOTE", Builtins.QUOTE);
+		e.put(Library.Internals.MACRO_QUOTE, Builtins.MQUOTE);
+		e.put("DEFINE", Builtins.DEFINE);
+		e.put("BEGIN", Builtins.BEGIN);
+		e.put("CONS", Builtins.CONS);
+		e.put("CAR", Builtins.CAR);
+		e.put("CDR", Builtins.CDR);
+		e.put("LAMBDA", Builtins.LAMBDA);
+		e.put("MACRO", Builtins.MACRO);
+		e.put("IF", Builtins.IF);
+		e.put("WRITE", Builtins.WRITE);
+		e.put("READ", Builtins.READ);
+		e.put("FORMAT", Builtins.FORMAT);
+		e.put("NEGATIVE?", Builtins.IS_NEGATIVE);
+		e.put("LIST?", Builtins.IS_LIST);
+		e.put("EQ?", Builtins.IS_EQ);
+		e.put("ORD", Builtins.ORD);
+		e.put("CHR", Builtins.CHR);
+		e.put("STR-LEN", Builtins.STR_LEN);
+		e.put("+", Builtins.ADD);
+		e.put("-", Builtins.SUB);
+		e.put("*", Builtins.MUL);
+		e.put("/", Builtins.DIV);
 
 		DEFAULT_ENV = e;
 	}

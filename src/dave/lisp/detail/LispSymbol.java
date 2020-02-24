@@ -37,7 +37,18 @@ public class LispSymbol extends LispObject
 	@Override
 	public String serialize()
 	{
-		return mValue;
+		return "'" + mValue;
+	}
+	
+	@Override
+	public boolean equals(Object o)
+	{
+		if(o instanceof LispSymbol)
+		{
+			return mValue.equalsIgnoreCase(((LispSymbol) o).mValue);
+		}
+		
+		return false;
 	}
 
 	public static LispSymbol deserialize(CharBuf s)

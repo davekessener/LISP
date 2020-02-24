@@ -78,19 +78,36 @@ public class LispCell extends LispObject
 
 	private static LispCell deserialize(CharBuf s, char popen)
 	{
+		skip_ws(s);
+		
+		if(is_pclose(s.top(), popen))
+		{
+			s.pop();
+			
+			return null;
+		}
+		
 		LispObject car = LispObject.deserialize(s);
+		LispObject cdr = null;
 
 		if(!is_pclose(s.top(), popen))
 		{
 			if(!is_ws(s.top()))
 				throw new ParseError("Expected whitespace: %s", s.rest());
+			
+			skip_ws(s);
 
-			while(is_ws(s.top()))
+			if(s.top() == '.')
 			{
 				s.pop();
+				skip_ws(s);
+				
+				cdr = LispObject.deserialize(s);
+				
+				if(!is_pclose(s.top(), popen))
+					throw new ParseError("Unexpected trailing chars after CDR: %s", s.rest());
 			}
-
-			if(!is_pclose(s.top(), popen))
+			else if(!is_pclose(s.top(), popen))
 			{
 				return new LispCell(car, deserialize(s, popen));
 			}
@@ -98,8 +115,10 @@ public class LispCell extends LispObject
 
 		s.pop();
 
-		return new LispCell(car, null);
+		return new LispCell(car, cdr);
 	}
+	
+	private static void skip_ws(CharBuf s) { while(!s.empty() && is_ws(s.top())) s.pop(); }
 
 	private static boolean is_pclose(char c, char popen)
 	{

@@ -2,6 +2,7 @@ package dave.lisp.detail;
 
 import dave.lisp.utils.CharBuf;
 import dave.lisp.common.Environment;
+import dave.lisp.common.Library;
 import dave.lisp.common.Result;
 import dave.lisp.error.ParseError;
 
@@ -15,6 +16,11 @@ public abstract class LispObject
 	{
 		return serialize();
 	}
+	
+	public static String serialize(LispObject o)
+	{
+		return (o == null ? "NIL" : o.serialize());
+	}
 
 	public static LispObject deserialize(CharBuf s)
 	{
@@ -26,6 +32,18 @@ public abstract class LispObject
 		}
 		else switch(c)
 		{
+			case '\'':
+				s.pop();
+				return new LispCell(new LispSymbol("QUOTE"), deserialize(s));
+				
+			case '`':
+				s.pop();
+				return new LispCell(new LispSymbol(Library.Internals.MACRO_QUOTE), deserialize(s));
+			
+			case ',':
+				s.pop();
+				return new LispCell(new LispSymbol(Library.Internals.MACRO_UNQUOTE), deserialize(s));
+				
 			case '-':
 			{
 				LispSymbol sym = LispSymbol.deserialize(s);

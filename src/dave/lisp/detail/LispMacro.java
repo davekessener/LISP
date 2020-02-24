@@ -19,11 +19,11 @@ public class LispMacro extends LispLambda
 	@Override
 	public Result call(LispObject a, Environment e)
 	{
-		e = new MultiplexEnvironment(build_closure(a), closure(), e);
+		Environment ex = new MultiplexEnvironment(build_closure(a), closure(), e);
 
-		Result r = LispRuntime.eval(body(), e);
+		Result r = LispRuntime.eval(body(), ex);
 
-		return LispRuntime.eval(r.value, r.environment);
+		return LispRuntime.eval(r.value, e);
 	}
 }
 
