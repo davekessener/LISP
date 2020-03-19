@@ -22,22 +22,28 @@ public class LispCell extends LispObject
 	@Override
 	public Result evaluate(Environment e)
 	{
+		String name = null;
 		LispObject f = LispRuntime.eval(mCar, e).value;
 
 		if(!(f instanceof LispCallable))
 		{
 			throw new LispError("%s cannot be called!", f);
 		}
+		
+		if(mCar instanceof LispSymbol)
+		{
+			name = ((LispSymbol) mCar).value();
+		}
 
-		return ((LispCallable) f).call(mCdr, e);
+		return ((LispCallable) f).call(name, mCdr, e);
 	}
-
+	
 	@Override
-	public String serialize()
+	public String serialize(boolean pretty)
 	{
 		StringBuffer sb = new StringBuffer();
 
-		serialize(sb, this, true);
+		serialize(sb, pretty, this, true);
 
 		return sb.toString();
 	}
@@ -54,7 +60,7 @@ public class LispCell extends LispObject
 		return deserialize(s, popen);
 	}
 
-	private static void serialize(StringBuffer sb, LispObject self, boolean first)
+	private static void serialize(StringBuffer sb, boolean pretty, LispObject self, boolean first)
 	{
 		if(self == null)
 		{
@@ -65,13 +71,13 @@ public class LispCell extends LispObject
 			LispCell cell = (LispCell) self;
 
 			sb.append(first ? '(' : ' ');
-			sb.append(cell.mCar.serialize());
-			serialize(sb, cell.mCdr, false);
+			sb.append(LispObject.serialize(cell.mCar, pretty));
+			serialize(sb, pretty, cell.mCdr, false);
 		}
 		else
 		{
 			sb.append(" . ");
-			sb.append(self.serialize());
+			sb.append(self.serialize(pretty));
 			sb.append(")");
 		}
 	}

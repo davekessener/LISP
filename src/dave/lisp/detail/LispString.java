@@ -4,7 +4,7 @@ import dave.lisp.utils.CharBuf;
 
 import dave.lisp.error.ParseError;
 
-public class LispString extends LispIdentityObject
+public class LispString extends LispObject
 {
 	private final String mValue;
 
@@ -18,9 +18,9 @@ public class LispString extends LispIdentityObject
 	public String value() { return mValue; }
 
 	@Override
-	public String serialize()
+	public String serialize(boolean pretty)
 	{
-		return String.format("\"%s\"", mValue);
+		return String.format("\"%s\"", mValue.replaceAll("\n", "\\\\n").replaceAll("\r", "\\\\r").replaceAll("\t", "\\\\t"));
 	}
 	
 	@Override

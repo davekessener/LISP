@@ -5,7 +5,7 @@ import dave.lisp.error.ParseError;
 
 import dave.lisp.utils.CharBuf;
 
-public class LispNumber extends LispIdentityObject
+public class LispNumber extends LispObject
 {
 	private final double mValue;
 
@@ -27,11 +27,23 @@ public class LispNumber extends LispIdentityObject
 	}
 
 	@Override
-	public String serialize()
+	public String serialize(boolean pretty)
 	{
-		int v = (int) mValue;
+		int d = 0;
 		
-		return (v == mValue ? String.format("%d", v) : String.format("%.3f", mValue));
+		while(d < 4)
+		{
+			double v = mValue;
+			
+			for(int i = 0 ; i < d ; ++i) v *= 10;
+			
+			if(v == (int) v)
+				break;
+			
+			++d;
+		}
+		
+		return String.format("%." + d + "f", mValue);
 	}
 	
 	@Override

@@ -3,7 +3,7 @@ package dave.lisp.detail;
 import dave.lisp.common.Environment;
 import dave.lisp.common.Result;
 
-public abstract class LispBuiltin extends LispIdentityObject implements LispCallable
+public abstract class LispBuiltin extends LispObject implements LispCallable
 {
 	private final String mID;
 	private final boolean mEvaluateArgs;
@@ -17,7 +17,7 @@ public abstract class LispBuiltin extends LispIdentityObject implements LispCall
 	public String id() { return mID; }
 
 	@Override
-	public Result call(LispObject a, Environment e)
+	public Result call(String name, LispObject a, Environment e)
 	{
 		if(mEvaluateArgs)
 		{
@@ -28,9 +28,9 @@ public abstract class LispBuiltin extends LispIdentityObject implements LispCall
 	}
 
 	@Override
-	public String serialize()
+	public String serialize(boolean pretty)
 	{
-		return "BUILTIN[" + mID + "]";
+		return pretty ? mID : ("BUILTIN[" + mID + "]");
 	}
 
 	protected abstract Result apply(LispObject a, Environment e);

@@ -22,7 +22,7 @@ public class LispProxy<T> extends LispObject
 	}
 
 	@Override
-	public String serialize()
+	public String serialize(boolean pretty)
 	{
 		return "***DETAIL***";
 	}

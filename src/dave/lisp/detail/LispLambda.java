@@ -7,7 +7,7 @@ import dave.lisp.common.Environment;
 import dave.lisp.common.Result;
 import dave.lisp.error.LispError;
 
-public class LispLambda extends LispIdentityObject implements LispCallable
+public class LispLambda extends LispObject implements LispCallable
 {
 	private final LispObject mArgNames;
 	private final LispObject mBody;
@@ -27,18 +27,28 @@ public class LispLambda extends LispIdentityObject implements LispCallable
 	protected Environment closure() { return mClosure; }
 
 	@Override
-	public Result call(LispObject a, Environment e)
+	public Result call(String name, LispObject a, Environment e)
 	{
+		Environment c = mClosure;
+		
+		if(name != null)
+		{
+			c = new ExtendedEnvironment(new LispSymbol(name), this, c);
+		}
+		
 		a = LispRuntime.eval_all(a, e);
-		e = new MultiplexEnvironment(build_closure(a), mClosure, e);
+		c = new MultiplexEnvironment(build_closure(a), c);
 
-		return LispRuntime.eval(mBody, e);
+		return new Result(LispRuntime.eval(mBody, c).value, e);
 	}
 
 	@Override
-	public String serialize()
+	public String serialize(boolean pretty)
 	{
-		return type() + "[" + LispObject.serialize(mArgNames) + ", " + LispObject.serialize(mBody) + "]";
+		String args = LispObject.serialize(mArgNames, pretty);
+		String body = LispObject.serialize(mBody, pretty);
+		
+		return "{" + type() + " " + args + " " + body + "}";
 	}
 
 	public String type()

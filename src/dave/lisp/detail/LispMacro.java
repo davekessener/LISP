@@ -17,13 +17,25 @@ public class LispMacro extends LispLambda
 	}
 
 	@Override
-	public Result call(LispObject a, Environment e)
+	public Result call(String name, LispObject a, Environment e)
 	{
-		Environment ex = new MultiplexEnvironment(build_closure(a), closure(), e);
+		LispObject r = expand(name, a, e);
+		
+		return LispRuntime.eval(r, e);
+	}
+	
+	public LispObject expand(String name, LispObject a, Environment e)
+	{
+		e = closure();
+		
+		if(name != null)
+		{
+			e = new ExtendedEnvironment(new LispSymbol(name), this, e);
+		}
+		
+		e = new MultiplexEnvironment(build_closure(a), e);
 
-		Result r = LispRuntime.eval(body(), ex);
-
-		return LispRuntime.eval(r.value, e);
+		return LispRuntime.eval(body(), e).value;
 	}
 }
 

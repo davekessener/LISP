@@ -24,7 +24,9 @@ public class MultiplexEnvironment extends BaseEnvironment
 			Result r = e.lookup(id);
 
 			if(r != null)
+			{
 				return r;
+			}
 		}
 
 		return null;

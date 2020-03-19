@@ -8,8 +8,10 @@ import dave.lisp.error.ParseError;
 
 public abstract class LispObject
 {
-	public abstract Result evaluate(Environment e);
-	public abstract String serialize( );
+	public Result evaluate(Environment e) { return new Result(this, e); }
+	public abstract String serialize(boolean pretty);
+	
+	public final String serialize( ) { return serialize(false); }
 
 	@Override
 	public String toString()
@@ -17,9 +19,10 @@ public abstract class LispObject
 		return serialize();
 	}
 	
-	public static String serialize(LispObject o)
+	public static String serialize(LispObject o) { return serialize(o, false); }
+	public static String serialize(LispObject o, boolean pretty)
 	{
-		return (o == null ? "NIL" : o.serialize());
+		return (o == null ? "NIL" : o.serialize(pretty));
 	}
 
 	public static LispObject deserialize(CharBuf s)
@@ -33,8 +36,7 @@ public abstract class LispObject
 		else switch(c)
 		{
 			case '\'':
-				s.pop();
-				return new LispCell(new LispSymbol("QUOTE"), deserialize(s));
+				return readChar(s);
 				
 			case '`':
 				s.pop();
@@ -83,6 +85,64 @@ public abstract class LispObject
 			default:
 				return LispSymbol.deserialize(s);
 		}
+	}
+	
+	private static LispObject readChar(CharBuf s)
+	{
+		if(s.top() != '\'')
+			throw new ParseError("Tried to read char! |%s", s.rest());
+		
+		s.pop();
+		
+		char c = s.top();
+		
+		s.pop();
+		
+		if(c == '\\')
+		{
+			char cc = s.top();
+			
+			s.pop();
+			
+			if(s.top() != '\'')
+				throw new ParseError("Invalid escape sequence in char! '\\%c%s", cc, s.rest());
+			
+			switch(cc)
+			{
+				case 'n':
+					c = '\n';
+					break;
+					
+				case 'r':
+					c = '\r';
+					break;
+					
+				case 't':
+					c = '\t';
+					break;
+					
+				case '0':
+					c = '\0';
+					break;
+					
+				case '\'':
+					c = '\'';
+					break;
+					
+				default:
+					throw new ParseError("Unknown escape sequence '\\%c%s", cc, s.rest());
+			}
+		}
+		else if(s.top() != '\'')
+		{
+			s.unpop();
+			
+			return new LispCell(new LispSymbol("QUOTE"), deserialize(s));
+		}
+		
+		s.pop();
+		
+		return new LispNumber(c);
 	}
 }
 

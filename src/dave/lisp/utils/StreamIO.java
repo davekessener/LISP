@@ -57,4 +57,17 @@ public class StreamIO implements IO
 			throw new LispError("Failed to close IO! [%s]", e.getMessage());
 		}
 	}
+	
+	@Override
+	public int available()
+	{
+		try
+		{
+			return mIn.available();
+		}
+		catch(IOException e)
+		{
+			throw new LispError("Cannot check available! [%s]", e.getMessage());
+		}
+	}
 }

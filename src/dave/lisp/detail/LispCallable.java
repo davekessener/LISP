@@ -5,6 +5,6 @@ import dave.lisp.common.Result;
 
 public interface LispCallable
 {
-	public abstract Result call(LispObject x, Environment e);
+	public abstract Result call(String name, LispObject x, Environment e);
 }
 

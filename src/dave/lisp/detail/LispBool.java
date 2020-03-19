@@ -4,7 +4,7 @@ import dave.lisp.error.ParseError;
 
 import dave.lisp.utils.CharBuf;
 
-public class LispBool extends LispIdentityObject
+public class LispBool extends LispObject
 {
 	private final boolean mValue;
 
@@ -14,7 +14,7 @@ public class LispBool extends LispIdentityObject
 	}
 
 	@Override
-	public String serialize()
+	public String serialize(boolean pretty)
 	{
 		return String.format("#%c", mValue ? 'T' : 'F');
 	}

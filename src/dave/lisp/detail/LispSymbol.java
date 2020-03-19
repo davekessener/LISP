@@ -29,15 +29,15 @@ public class LispSymbol extends LispObject
 		Result r = e.lookup(this);
 
 		if(r == null)
-			throw new LispError("Unbound symbol %s!", mValue);
+			throw new LispError("Unbound symbol %s! (%s)", mValue, e);
 
 		return new Result(r.value, e);
 	}
 
 	@Override
-	public String serialize()
+	public String serialize(boolean pretty)
 	{
-		return "'" + mValue;
+		return pretty ? mValue : ("'" + mValue);
 	}
 	
 	@Override

@@ -31,5 +31,13 @@ public class CharBuf
 
 		++mIdx;
 	}
+	
+	public void unpop()
+	{
+		if(mIdx == 0)
+			throw new EOIError();
+		
+		--mIdx;
+	}
 }
 

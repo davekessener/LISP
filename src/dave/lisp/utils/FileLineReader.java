@@ -28,6 +28,10 @@ public class FileLineReader implements LineReader
 				{
 					mContent.add(s);
 				}
+				else
+				{
+					mContent.add("");
+				}
 			});
 			
 			mI = mContent.iterator();

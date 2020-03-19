@@ -54,6 +54,55 @@ public class LispRuntime
 			return x.evaluate(e);
 		}
 	}
+	
+	public static LispObject expand(LispObject x, Environment e)
+	{
+		if(!(x instanceof LispCell))
+		{
+			return x;
+		}
+		else
+		{
+			LispCell c = (LispCell) x;
+			LispObject f = c.car();
+			String name = null;
+			
+			if(f instanceof LispSymbol)
+			{
+				Result r = e.lookup(f);
+				
+				name = ((LispSymbol) f).value();
+				
+				if(r == null)
+					return x;
+				
+				f = r.value;
+			}
+			
+			if(!(f instanceof LispMacro))
+			{
+				return new LispCell(expand(c.car(), e), expand_rest(c.cdr(), e));
+			}
+			
+			LispObject m = ((LispMacro) f).expand(name, c.cdr(), e);
+			
+			return expand(m, e);
+		}
+	}
+	
+	private static LispObject expand_rest(LispObject x, Environment e)
+	{
+		if(x instanceof LispCell)
+		{
+			LispCell c = (LispCell) x;
+			
+			return new LispCell(expand(c.car(), e), expand_rest(c.cdr(), e));
+		}
+		else
+		{
+			return expand(x, e);
+		}
+	}
 
 	public static LispObject eval_all(LispObject x, Environment e)
 	{
@@ -106,6 +155,7 @@ public class LispRuntime
 		e.put("NIL", null);
 		e.put("*STDIO*", new LispNumber(0));
 		
+		e.put("eval", Builtins.EVAL);
 		e.put("QUOTE", Builtins.QUOTE);
 		e.put(Library.Internals.MACRO_QUOTE, Builtins.MQUOTE);
 		e.put("DEFINE", Builtins.DEFINE);
@@ -115,6 +165,7 @@ public class LispRuntime
 		e.put("CDR", Builtins.CDR);
 		e.put("LAMBDA", Builtins.LAMBDA);
 		e.put("MACRO", Builtins.MACRO);
+		e.put("MACRO-EXPAND", Builtins.MACRO_EXPAND);
 		e.put("IF", Builtins.IF);
 		e.put("WRITE", Builtins.WRITE);
 		e.put("READ", Builtins.READ);
@@ -125,6 +176,12 @@ public class LispRuntime
 		e.put("ORD", Builtins.ORD);
 		e.put("CHR", Builtins.CHR);
 		e.put("STR-LEN", Builtins.STR_LEN);
+		e.put("STR-APPEND", Builtins.STR_APPEND);
+		e.put("STR-SERIALIZE", Builtins.STR_SER);
+		e.put("STR-DESERIALIZE", Builtins.STR_DES);
+		e.put("NOT", Builtins.NOT);
+		e.put("AND", Builtins.AND);
+		e.put("OR", Builtins.OR);
 		e.put("+", Builtins.ADD);
 		e.put("-", Builtins.SUB);
 		e.put("*", Builtins.MUL);

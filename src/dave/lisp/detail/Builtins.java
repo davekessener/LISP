@@ -1,6 +1,9 @@
 package dave.lisp.detail;
 
 import java.util.List;
+import java.nio.charset.Charset;
+import java.nio.charset.IllegalCharsetNameException;
+import java.nio.charset.UnsupportedCharsetException;
 import java.util.ArrayList;
 
 import dave.lisp.common.Environment;
@@ -9,9 +12,29 @@ import dave.lisp.common.Library;
 import dave.lisp.common.Result;
 import dave.lisp.error.LispError;
 
-public final class Builtins
+public class Builtins
 {
-	public static LispBuiltin QUOTE = new LispBuiltin("QUOTE", false) {
+	public static final LispBuiltin EVAL = new LispBuiltin("EVAL", true) {
+		@Override
+		protected Result apply(LispObject x, Environment e)
+		{
+			LispCell c = (LispCell) x;
+			
+			if(c.cdr() != null)
+				throw new LispError("Trailing CDR! [%s]", x);
+			
+			if(c.car() instanceof LispString)
+			{
+				return LispRuntime.eval(LispRuntime.parse(((LispString) c.car()).value()), e);
+			}
+			else
+			{
+				return LispRuntime.eval(c.car(), e);
+			}
+		}
+	};
+	
+	public static final LispBuiltin QUOTE = new LispBuiltin("QUOTE", false) {
 		@Override
 		protected Result apply(LispObject x, Environment e)
 		{
@@ -19,7 +42,7 @@ public final class Builtins
 		}
 	};
 
-	public static LispBuiltin MQUOTE = new LispBuiltin("MACRO-QUOTE", false) {
+	public static final LispBuiltin MQUOTE = new LispBuiltin("MACRO-QUOTE", false) {
 		private Environment mEnv;
 		
 		@Override
@@ -69,7 +92,7 @@ public final class Builtins
 		}
 	};
 
-	public static LispBuiltin DEFINE = new LispBuiltin("DEFINE", false) {
+	public static final LispBuiltin DEFINE = new LispBuiltin("DEFINE", false) {
 		@Override
 		protected Result apply(LispObject x, Environment e)
 		{
@@ -78,12 +101,14 @@ public final class Builtins
 			toList(x, a, 2, 2, false);
 			
 			Result v = LispRuntime.eval(a.get(1), e);
+			
+//			Stdout.printf("SETTING: %s -> %s\n", a.get(0).serialize(), LispObject.serialize(v.value));
 
 			return new Result(a.get(0), new ExtendedEnvironment(a.get(0), v.value, e));
 		}
 	};
 
-	public static LispBuiltin BEGIN = new LispBuiltin("BEGIN", false) {
+	public static final LispBuiltin BEGIN = new LispBuiltin("BEGIN", false) {
 		@Override
 		protected Result apply(LispObject x, Environment e)
 		{
@@ -101,7 +126,7 @@ public final class Builtins
 		}
 	};
 	
-	public static LispBuiltin CONS = new LispBuiltin("CONS", true) {
+	public static final LispBuiltin CONS = new LispBuiltin("CONS", true) {
 		@Override
 		protected Result apply(LispObject x, Environment e)
 		{
@@ -113,7 +138,7 @@ public final class Builtins
 		}
 	};
 	
-	public static LispBuiltin CAR = new LispBuiltin("CAR", true) {
+	public static final LispBuiltin CAR = new LispBuiltin("CAR", true) {
 		@Override
 		protected Result apply(LispObject x, Environment e)
 		{
@@ -131,7 +156,7 @@ public final class Builtins
 		}
 	};
 	
-	public static LispBuiltin CDR = new LispBuiltin("CDR", true) {
+	public static final LispBuiltin CDR = new LispBuiltin("CDR", true) {
 		@Override
 		protected Result apply(LispObject x, Environment e)
 		{
@@ -149,7 +174,7 @@ public final class Builtins
 		}
 	};
 
-	public static LispBuiltin LAMBDA = new CallableBuiltin("LAMBDA") {
+	public static final LispBuiltin LAMBDA = new CallableBuiltin("LAMBDA") {
 		@Override
 		protected LispObject create(LispObject args, LispObject body, Environment e)
 		{
@@ -157,31 +182,45 @@ public final class Builtins
 		}
 	};
 
-	public static LispBuiltin MACRO = new CallableBuiltin("MACRO") {
+	public static final LispBuiltin MACRO = new CallableBuiltin("MACRO") {
 		@Override
 		protected LispObject create(LispObject args, LispObject body, Environment e)
 		{
 			return new LispMacro(args, body, e);
 		}
 	};
-	
-	public static LispBuiltin WRITE = new LispBuiltin("WRITE", true) {
-		@SuppressWarnings("unchecked")
+
+	public static final LispBuiltin MACRO_EXPAND = new LispBuiltin("MACRO-EXPAND", false) {
 		@Override
 		protected Result apply(LispObject x, Environment e)
 		{
-			List<LispObject> a = new ArrayList<>();
+			LispCell c = (LispCell) x;
 			
-			toList(x, a, 1, Integer.MAX_VALUE, false);
+			if(c.cdr() != null)
+				throw new LispError("Trailing cdr! [%s]", x);
 			
-			if(!(a.get(0) instanceof LispNumber))
-				throw new LispError("Not a valid file-handle: %s", a.get(0));
+			return new Result(LispRuntime.expand(c.car(), e), e);
+		}
+	};
+	
+	private static abstract class IOBuiltin extends LispBuiltin
+	{
+		private IOBuiltin(String name)
+		{
+			super(name, true);
+		}
+		
+		@SuppressWarnings("unchecked")
+		protected IO getFile(LispObject lfd, Environment e)
+		{
+			if(!(lfd instanceof LispNumber))
+				throw new LispError("Not a valid file-handle: %s", lfd);
 			
-			LispNumber dfh = (LispNumber) a.get(0);
-			int fh = (int) dfh.value();
+			LispNumber dfd = (LispNumber) lfd;
+			int fd = dfd.integer();
 			
-			if(fh < 0 || dfh.value() != fh)
-				throw new LispError("File-handle must be integral, non-negative values: %s", dfh);
+			if(fd < 0)
+				throw new LispError("File-handle must be integral, non-negative values: %s", dfd);
 			
 			Result lfds = e.lookup(new LispSymbol(Library.Internals.FILE_HANDLES));
 			
@@ -193,13 +232,27 @@ public final class Builtins
 			
 			List<IO> fds = ((LispProxy<List<IO>>) lfds.value).content();
 			
-			if(fh >= fds.size())
-				throw new LispError("Invalid file-handle %d!", fh);
+			if(fd >= fds.size())
+				throw new LispError("Invalid file-handle %d!", fd);
 			
-			IO io = fds.get(fh);
+			IO io = fds.get(fd);
 			
 			if(io == null)
-				throw new LispError("File already closed! (%d)", fh);
+				throw new LispError("File already closed! (%d)", fd);
+			
+			return io;
+		}
+	}
+	
+	public static final LispBuiltin WRITE = new IOBuiltin("WRITE") {
+		@Override
+		protected Result apply(LispObject x, Environment e)
+		{
+			List<LispObject> a = new ArrayList<>();
+			
+			toList(x, a, 1, Integer.MAX_VALUE, false);
+			
+			IO io = getFile(a.get(0), e);
 			
 			for(int j = 1 ; j < a.size() ; ++j)
 			{
@@ -244,15 +297,197 @@ public final class Builtins
 		}
 	};
 	
-	public static LispBuiltin READ = new LispBuiltin("READ", true) {
+	public static final LispBuiltin READ = new IOBuiltin("READ") {
 		@Override
 		protected Result apply(LispObject x, Environment e)
 		{
-			throw new UnsupportedOperationException();
+			List<LispObject> a = new ArrayList<>();
+			
+			toList(x, a, 1, 2, false);
+			
+			IO io = getFile(a.get(0), e);
+			
+			int l = -1;
+			
+			if(a.size() > 1)
+			{
+				if(!(a.get(1) instanceof LispNumber))
+					throw new LispError("Invalid amount of bytes to read: [%s]", x);
+				
+				l = ((LispNumber) a.get(1)).integer();
+			}
+			
+			byte[] v = new byte[0];
+			
+			if(l > 0)
+			{
+				v = io.read(l);
+			}
+			else if(l == 0)
+			{
+				v = io.read(io.available());
+			}
+			else if(l == -1)
+			{
+				byte[] t1 = io.read(1);
+				byte[] t2 = io.read(io.available());
+				
+				v = new byte[t1.length + t2.length];
+				
+				for(int i = 0 ; i < t1.length ; ++i)
+				{
+					v[i+0] = t1[i];
+				}
+				
+				for(int i = 0 ; i < t2.length ; ++i)
+				{
+					v[i+t1.length] = t2[i];
+				}
+			}
+			
+			LispObject r = null;
+			
+			for(int i = v.length ; i > 0 ; --i)
+			{
+				r = new LispCell(new LispNumber(v[i-1]), r);
+			}
+			
+			return new Result(r, e);
 		}
 	};
 	
-	public static LispBuiltin FORMAT = new LispBuiltin("FORMAT", true) {
+	private static abstract class StrHelperBuiltin extends LispBuiltin
+	{
+		private StrHelperBuiltin(String name)
+		{
+			super(name, true);
+		}
+		
+		protected Charset getCharset(List<LispObject> a, int i)
+		{
+			Charset cs = Charset.defaultCharset();
+			
+			if(i < a.size())
+			{
+				if(!(a.get(i) instanceof LispString))
+					throw new LispError("Expected string specifying charset! [%s]", a.get(i));
+				
+				try
+				{
+					cs = Charset.forName(((LispString) a.get(i)).value());
+				}
+				catch(IllegalCharsetNameException | UnsupportedCharsetException ex)
+				{
+					throw new LispError("No such charset: %s", ex.getMessage());
+				}
+			}
+			
+			return cs;
+		}
+	}
+	
+	public static final LispBuiltin STR_SER = new StrHelperBuiltin("STR-SERIALIZE") {
+		@Override
+		protected Result apply(LispObject x, Environment e)
+		{
+			List<LispObject> a = new ArrayList<>();
+			
+			toList(x, a, 1, 2, false);
+			
+			if(!(a.get(0) instanceof LispString))
+				throw new LispError("Can only serialize string! [%s]", x);
+			
+			String s = ((LispString) a.get(0)).value();
+			Charset cs = getCharset(a, 1);
+			byte[] v = s.getBytes(cs);
+			
+			LispObject r = null;
+			
+			for(int i = v.length ; i > 0 ; --i)
+			{
+				r = new LispCell(new LispNumber(v[i-1]), r);
+			}
+			
+			return new Result(r, e);
+		}
+	};
+	
+	public static final LispBuiltin STR_DES = new StrHelperBuiltin("STR-DESERIALIZE") {
+		@Override
+		protected Result apply(LispObject x, Environment e)
+		{
+			List<LispObject> a = new ArrayList<>();
+			List<LispObject> v = new ArrayList<>();
+			
+			toList(x, a, 1, 2, false);
+			toList(a.get(0), v, 0, Integer.MAX_VALUE, false);
+			
+			Charset cs = getCharset(a, 1);
+			
+			int[] lv = v.stream().mapToInt(o -> {
+				if(!(o instanceof LispNumber))
+					throw new LispError("Not a number: %s [%s]", o, x);
+				
+				return ((LispNumber) o).integer();
+			}).toArray();
+			
+			byte[] bv = new byte[lv.length];
+			
+			for(int i = 0 ; i < lv.length ; ++i)
+			{
+				bv[i] = (byte) lv[i];
+				
+				if(bv[i] != lv[i])
+					throw new LispError("Out of bounds: %02x [%s]", lv[i], x);
+			}
+			
+			String s = new String(bv, cs);
+			
+			return new Result(new LispString(s), e);
+		}
+	};
+
+	public static final LispBuiltin STR_LEN = new LispBuiltin("STR-LEN", true) {
+		@Override
+		protected Result apply(LispObject x, Environment e)
+		{
+			LispCell c = (LispCell) x;
+			
+			if(c.cdr() != null)
+				throw new LispError("Trailing cdr [%s]", x);
+			
+			if(!(c.car() instanceof LispString))
+				throw new LispError("Cannot get length of a non-string! [%s]", x);
+			
+			String s = ((LispString) c.car()).value();
+			
+			return new Result(new LispNumber(s.length()), e);
+		}
+	};
+	
+	public static final LispBuiltin STR_APPEND = new LispBuiltin("STR-APPEND", true) {
+		@Override
+		protected Result apply(LispObject x, Environment e)
+		{
+			List<LispObject> a = new ArrayList<>();
+			
+			toList(x, a, 0, Integer.MAX_VALUE, false);
+			
+			StringBuilder sb = new StringBuilder();
+			
+			for(LispObject o : a)
+			{
+				if(!(o instanceof LispString))
+					throw new LispError("Not a string: %s [%s]", o, x);
+				
+				sb.append(((LispString) o).value());
+			}
+			
+			return new Result(new LispString(sb.toString()), e);
+		}
+	};
+	
+	public static final LispBuiltin FORMAT = new LispBuiltin("FORMAT", true) {
 		@Override
 		protected Result apply(LispObject x, Environment e)
 		{
@@ -290,7 +525,7 @@ public final class Builtins
 			}
 			else
 			{
-				return LispObject.serialize(o);
+				return LispObject.serialize(o, true);
 			}
 		}
 	};
@@ -315,7 +550,7 @@ public final class Builtins
 		protected abstract LispObject create(LispObject args, LispObject body, Environment e);
 	}
 
-	public static LispBuiltin IF = new LispBuiltin("IF", false) {
+	public static final LispBuiltin IF = new LispBuiltin("IF", false) {
 		@Override
 		protected Result apply(LispObject x, Environment e)
 		{
@@ -342,7 +577,7 @@ public final class Builtins
 		}
 	};
 
-	public static LispBuiltin IS_NEGATIVE = new LispBuiltin("NEGATIVE?", true) {
+	public static final LispBuiltin IS_NEGATIVE = new LispBuiltin("NEGATIVE?", true) {
 		@Override
 		protected Result apply(LispObject x, Environment e)
 		{
@@ -360,7 +595,7 @@ public final class Builtins
 		}
 	};
 
-	public static LispBuiltin IS_LIST = new LispBuiltin("LIST?", true) {
+	public static final LispBuiltin IS_LIST = new LispBuiltin("LIST?", true) {
 		@Override
 		protected Result apply(LispObject x, Environment e)
 		{
@@ -373,7 +608,7 @@ public final class Builtins
 		}
 	};
 	
-	public static LispBuiltin IS_EQ = new LispBuiltin("EQ?", true) {
+	public static final LispBuiltin IS_EQ = new LispBuiltin("EQ?", true) {
 		@Override
 		protected Result apply(LispObject x, Environment e)
 		{
@@ -399,7 +634,7 @@ public final class Builtins
 		}
 	};
 	
-	public static LispBuiltin ORD = new LispBuiltin("ORD", true) {
+	public static final LispBuiltin ORD = new LispBuiltin("ORD", true) {
 		@Override
 		protected Result apply(LispObject x, Environment e)
 		{
@@ -423,7 +658,7 @@ public final class Builtins
 		}
 	};
 	
-	public static LispBuiltin CHR = new LispBuiltin("CHR", true) {
+	public static final LispBuiltin CHR = new LispBuiltin("CHR", true) {
 		@Override
 		protected Result apply(LispObject x, Environment e)
 		{
@@ -441,21 +676,63 @@ public final class Builtins
 		}
 	};
 	
-	public static LispBuiltin STR_LEN = new LispBuiltin("STR-LEN", true) {
+	public static final LispBuiltin NOT = new LispBuiltin("NOT", true) {
 		@Override
 		protected Result apply(LispObject x, Environment e)
 		{
-			LispCell c = (LispCell) x;
+			List<LispObject> a = new ArrayList<>();
 			
-			if(c.cdr() != null)
-				throw new LispError("Trailing cdr [%s]", x);
+			toList(x, a, 1, 1, false);
 			
-			if(!(c.car() instanceof LispString))
-				throw new LispError("Cannot get length of a non-string! [%s]", x);
+			return new Result(from_bool(!to_bool(a.get(0))), e);
+		}
+	};
+	
+	public static final LispBuiltin AND = new LispBuiltin("AND", false) {
+		@Override
+		protected Result apply(LispObject x, Environment e)
+		{
+			LispObject r = null;
 			
-			String s = ((LispString) c.car()).value();
+			for(LispCell c = (LispCell) x ; true ; c = (LispCell) c.cdr())
+			{
+				r = LispRuntime.eval(c.car(), e).value;
+				
+				if(!to_bool(r))
+					return new Result(LispBool.FALSE, e);
+				
+				if(c.cdr() == null)
+					break;
+				
+				if(!(c.cdr() instanceof LispCell))
+					throw new LispError("Trailing CDR! [%s]", x);
+			}
 			
-			return new Result(new LispNumber(s.length()), e);
+			return new Result(r, e);
+		}
+	};
+	
+	public static final LispBuiltin OR = new LispBuiltin("OR", false) {
+		@Override
+		protected Result apply(LispObject x, Environment e)
+		{
+			LispObject r = null;
+			
+			for(LispCell c = (LispCell) x ; true ; c = (LispCell) c.cdr())
+			{
+				r = LispRuntime.eval(c.car(), e).value;
+				
+				if(to_bool(r))
+					return new Result(r, e);
+				
+				if(c.cdr() == null)
+					break;
+				
+				if(!(c.cdr() instanceof LispCell))
+					throw new LispError("Trailing CDR: %s [%s]", c.cdr(), x);
+			}
+			
+			return new Result(LispBool.FALSE, e);
 		}
 	};
 
@@ -463,7 +740,7 @@ public final class Builtins
 	public static final LispBuiltin SUB = new MixedNumericBuiltin("SUB", (a, b) -> (a - b), v -> -v);
 	public static final LispBuiltin MUL = new AccumulativeNumericBuiltin("MUL", (a, b) -> (a * b));
 	public static final LispBuiltin DIV = new MixedNumericBuiltin("DIV", (a, b) -> (a / b), v -> (1.0 / v));
-
+	
 	public static abstract class NumericBuiltin extends LispBuiltin
 	{
 		public NumericBuiltin(String id) { super(id, true); }
@@ -546,10 +823,10 @@ public final class Builtins
 	public static interface Accumulator { double apply(double a, double b); }
 	public static interface Transformer { double apply(double v); }
 
-	public static boolean to_bool(LispObject o) { return !(o == null || o == LispBool.FALSE); }
-	public static LispBool from_bool(boolean f) { return f ? LispBool.TRUE : LispBool.FALSE; }
+	public static final boolean to_bool(LispObject o) { return !(o == null || o == LispBool.FALSE); }
+	public static final LispBool from_bool(boolean f) { return f ? LispBool.TRUE : LispBool.FALSE; }
 	
-	private static LispObject toList(LispObject x, List<LispObject> r, int min, int max, boolean cdr)
+	private static final LispObject toList(LispObject x, List<LispObject> r, int min, int max, boolean cdr)
 	{
 		LispObject a = x;
 		
